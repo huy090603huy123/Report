@@ -1,147 +1,119 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Bar } from 'react-chartjs-2';
+// --- THÊM IMPORT MỚI TỪ REACT-SELECT ---
+import Select from 'react-select'; 
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
-import './App.css';
 
+// Import services, utils, constants
+import { fetchSheetsConfig, fetchSheetData } from './services/sheetService';
+import { findColumnName, normalizeString } from './utils';
+import { MAX_SCORES } from './constants';
+
+// Import Components
+import ComparisonChart from './components/ComparisonChart';
+import CrossUnitComparisonTable from './components/CrossUnitComparisonTable';
+import CrossUnitComparisonChart from './components/CrossUnitComparisonChart';
+import AddDataForm from './components/AddDataForm';
+
+// Đăng ký các thành phần cần thiết cho Chart.js
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-// --- PHẦN CẤU HÌNH ---
-const SPREADSHEET_ID = '1raMJ39PQ898AW1m9hBgTkyXi9dL7wXG0';
-const CONFIG_SHEET_GID = '750537527';
-
-// --- HÀM TIỆN ÍCH ---
-const findColumnName = (headers, possibleNames) => {
-  for (const name of possibleNames) {
-    const found = headers.find(h => 
-        h.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d") === name
-    );
-    if (found) return found;
-  }
-  return null;
-};
-
-const normalizeString = (str) => {
-    if (typeof str !== 'string') return '';
-    // Chuẩn hóa chuỗi: bỏ dấu, chuyển thành chữ thường để so sánh
-    return str.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
-};
-
-// --- Component Biểu đồ ---
-const ComparisonChart = ({ data }) => {
-    if (!data || data.length === 0) return null;
-    const chartData = {
-      labels: data.map(item => item['CHỈ SỐ']),
-      datasets: [ {
-          label: 'Thay đổi Điểm đánh giá',
-          data: data.map(item => item.thayDoiDiem),
-          backgroundColor: data.map(item => item.thayDoiDiem >= 0 ? 'rgba(40, 167, 69, 0.7)' : 'rgba(220, 53, 69, 0.7)'),
-          borderColor: data.map(item => item.thayDoiDiem >= 0 ? 'rgba(40, 167, 69, 1)' : 'rgba(220, 53, 69, 1)'),
-          borderWidth: 1,
-      } ],
-    };
-    const options = {
-      indexAxis: 'y', responsive: true,
-      plugins: {
-        legend: { position: 'top' },
-        title: { display: true, text: 'Biểu đồ so sánh mức độ thay đổi Điểm đánh giá' },
-        tooltip: { callbacks: { label: context => `${context.dataset.label}: ${context.raw.toFixed(2)}` } }
-      },
-      scales: {
-          x: { ticks: { font: { size: 10 } }, title: { display: true, text: 'Mức độ thay đổi' } },
-          y: { ticks: { font: { size: 10 } } }
-      }
-    };
-    return <Bar options={options} data={chartData} />;
+// --- STYLE TÙY CHỈNH CHO REACT-SELECT ---
+const customSelectStyles = {
+  control: (provided) => ({
+    ...provided,
+    minHeight: '48px',
+    border: '1px solid #ccc',
+    borderRadius: '8px',
+    fontSize: '1rem',
+    boxShadow: 'none',
+    '&:hover': {
+      borderColor: '#007bff',
+    },
+  }),
+  option: (provided, state) => ({
+    ...provided,
+    backgroundColor: state.isSelected ? '#007bff' : state.isFocused ? '#f1f8ff' : null,
+    color: state.isSelected ? 'white' : 'black',
+  }),
+  placeholder: (provided) => ({
+    ...provided,
+    color: '#888',
+  }),
 };
 
 
 function App() {
+  // --- STATE MANAGEMENT ---
   const [sheetsConfig, setSheetsConfig] = useState([]);
   const [allData, setAllData] = useState({});
-  const [comparisonData, setComparisonData] = useState([]);
   const [units, setUnits] = useState([]);
-  const [selectedUnit, setSelectedUnit] = useState('');
-  const [selectedOldDate, setSelectedOldDate] = useState(''); 
-  const [selectedNewDate, setSelectedNewDate] = useState(''); 
+  const [selectedUnit, setSelectedUnit] = useState(null); // Thay đổi thành null
+  const [selectedOldDate, setSelectedOldDate] = useState('');
+  const [selectedNewDate, setSelectedNewDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('Đang khởi tạo...');
   const [error, setError] = useState(null);
-
-  // MỚI: Cấu hình điểm tối đa cho các chỉ số
-  const MAX_SCORES = useMemo(() => ({
-    'diem cong khai minh bach': 18,
-    'diem dich vu truc tuyen': 22, // Tổng điểm từ DVC TT (12) và Thanh toán TT (10)
-    'diem muc do hai long': 18,
-    'diem so hoa ho so': 22,
-  }), []);
-
+  const [showAddDataForm, setShowAddDataForm] = useState(false);
+  
+  // State cho việc so sánh nhiều đơn vị
+  const [comparisonUnits, setComparisonUnits] = useState([]);
+  const [showCrossUnitComparer, setShowCrossUnitComparer] = useState(false);
+  
+  // --- DATA FETCHING ---
   useEffect(() => {
-    const configUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${CONFIG_SHEET_GID}`;
-    setStatus('Đang tải cấu hình...');
-    fetch(configUrl)
-      .then(res => res.text()).then(text => {
-        const rawJson = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/);
-        if (!rawJson || !rawJson[1]) throw new Error("Lỗi `_config`.");
-        const jsonData = JSON.parse(rawJson[1]);
-        const headers = jsonData.table.cols.map(col => col.label);
-        const rows = jsonData.table.rows.map(row => {
-          const rowData = {};
-          row.c.forEach((cell, index) => { rowData[headers[index]] = cell ? cell.v : null; });
-          return { name: rowData['TEN_SHEET'], gid: String(rowData['GID']) };
-        });
-        if (rows.length < 2) throw new Error("Sheet `_config` cần ít nhất 2 dòng.");
-        setSheetsConfig(rows);
-        setSelectedNewDate(rows[0].name);
-        setSelectedOldDate(rows[1].name);
-      })
-      .catch(err => { setError(`Không thể tải cấu hình: ${err.message}`); setLoading(false); });
-  }, []);
+    const loadInitialData = async () => {
+      try {
+        setStatus('Đang tải cấu hình...');
+        const config = await fetchSheetsConfig();
+        setSheetsConfig(config);
+        if (config && config.length > 1) {
+            setSelectedNewDate(config[0].name);
+            setSelectedOldDate(config[1].name);
+        } else if (config && config.length > 0) {
+            setSelectedNewDate(config[0].name);
+        }
 
-  useEffect(() => {
-    if (sheetsConfig.length === 0) return;
-    setStatus('Đang tải dữ liệu báo cáo...');
-    const fetchSheetData = (sheet) => {
-      const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${sheet.gid}`;
-      return fetch(url).then(res => res.text()).then(text => {
-        const rawJson = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/);
-        if (!rawJson || !rawJson[1]) throw new Error(`Lỗi JSON ở sheet ${sheet.name}`);
-        const jsonData = JSON.parse(rawJson[1]);
-        const headers = jsonData.table.cols.map(col => col.label).filter(Boolean);
-        const rows = jsonData.table.rows.map(row => {
-          const rowData = {};
-          row.c.forEach((cell, index) => { if (headers[index]) rowData[headers[index]] = cell ? cell.v : null; });
-          return rowData;
-        });
-        return { name: sheet.name, data: rows };
-      });
-    };
-    Promise.all(sheetsConfig.map(fetchSheetData))
-      .then(results => {
+        setStatus('Đang tải dữ liệu báo cáo...');
+        const results = await Promise.all(config.map(sheet => fetchSheetData(sheet)));
+        
         const dataBySheet = {};
         results.forEach(sheet => { dataBySheet[sheet.name] = sheet.data; });
         setAllData(dataBySheet);
-        const latestData = dataBySheet[sheetsConfig[0].name];
+
+        const latestData = dataBySheet[config[0].name];
         if (latestData && latestData.length > 0) {
-            const headers = Object.keys(latestData[0]);
-            const unitColumnName = findColumnName(headers, ['don vi', 'tendonvi', 'ten']);
-            if (unitColumnName) {
-                const uniqueUnits = [...new Set(latestData.map(item => item[unitColumnName]).filter(Boolean))];
-                setUnits(uniqueUnits.sort());
-            } else { throw new Error("Không tìm thấy cột 'Đơn vị' trong sheet mới nhất."); }
+          const headers = Object.keys(latestData[0]);
+          const unitColumnName = findColumnName(headers, ['don vi', 'tendonvi', 'ten']);
+          if (unitColumnName) {
+            const uniqueUnits = [...new Set(latestData.map(item => item[unitColumnName]).filter(Boolean))];
+            setUnits(uniqueUnits.sort());
+          } else {
+            throw new Error("Không tìm thấy cột 'Đơn vị' trong sheet mới nhất.");
+          }
         }
-      })
-      .catch(err => setError(`Lỗi xử lý dữ liệu: ${err.message}`))
-      .finally(() => setLoading(false));
-  }, [sheetsConfig]);
+      } catch (err) {
+        setError(`Lỗi: ${err.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadInitialData();
+  }, []);
 
-  useEffect(() => {
-    if (!selectedUnit || !selectedOldDate || !selectedNewDate || Object.keys(allData).length === 0) {
-      setComparisonData([]); return;
-    }
-    const dataNew = allData[selectedNewDate], dataOld = allData[selectedOldDate];
-    if (!dataNew || !dataOld || dataNew.length === 0 || dataOld.length === 0) return;
+  // --- COMPUTED DATA (MEMOIZED) ---
+  const unitOptions = useMemo(() => {
+    return units.map(unit => ({ value: unit, label: unit }));
+  }, [units]);
 
-    const headersNew = Object.keys(dataNew[0]), headersOld = Object.keys(dataOld[0]);
+  const comparisonData = useMemo(() => {
+    if (!selectedUnit || !selectedOldDate || !selectedNewDate || Object.keys(allData).length === 0) return [];
+    
+    const unitValue = selectedUnit.value; // Lấy giá trị từ object
+    const dataNew = allData[selectedNewDate];
+    const dataOld = allData[selectedOldDate];
+    if (!dataNew || !dataOld) return [];
+
+    const headersNew = Object.keys(dataNew[0] || {}), headersOld = Object.keys(dataOld[0] || {});
     const unitColNew = findColumnName(headersNew, ['don vi', 'tendonvi', 'ten']);
     const indicatorColNew = findColumnName(headersNew, ['chi so', 'description']);
     const percentColNew = findColumnName(headersNew, ['ty le %', 'ty le']);
@@ -152,19 +124,18 @@ function App() {
     const percentColOld = findColumnName(headersOld, ['ty le %', 'ty le']);
     const scoreColOld = findColumnName(headersOld, ['diem danh gia', 'score']);
 
-    if (!unitColNew || !indicatorColNew || !unitColOld || !indicatorColOld) return;
+    if (!unitColNew || !indicatorColNew || !unitColOld || !indicatorColOld) return [];
     
-    const filteredDataNew = dataNew.filter(row => row[unitColNew] === selectedUnit);
-    const filteredDataOld = dataOld.filter(row => row[unitColOld] === selectedUnit);
+    const filteredDataNew = dataNew.filter(row => row[unitColNew] === unitValue);
+    const filteredDataOld = dataOld.filter(row => row[unitColOld] === unitValue);
     const mapOld = new Map(filteredDataOld.map(row => [normalizeString(row[indicatorColOld]), row]));
     
-    const compared = filteredDataNew.map((rowNew) => {
+    return filteredDataNew.map((rowNew) => {
       const rowOld = mapOld.get(normalizeString(rowNew[indicatorColNew])) || {};
       const tyLeNew = parseFloat(String(rowNew[percentColNew] || '0').replace(',', '.')) || 0;
       const tyLeOld = parseFloat(String(rowOld[percentColOld] || '0').replace(',', '.')) || 0;
       const diemNew = parseFloat(String(rowNew[scoreColNew] || '0').replace(',', '.')) || 0;
       const diemOld = parseFloat(String(rowOld[scoreColOld] || '0').replace(',', '.')) || 0;
-
       return {
         'NHÓM CHỈ TIÊU': rowNew[groupColNew] || 'Chưa phân loại',
         'CHỈ SỐ': rowNew[indicatorColNew],
@@ -172,18 +143,124 @@ function App() {
         diemNew, diemOld, thayDoiDiem: diemNew - diemOld,
       };
     });
-    setComparisonData(compared);
-  }, [selectedUnit, selectedOldDate, selectedNewDate, allData, MAX_SCORES]);
+  }, [selectedUnit, selectedOldDate, selectedNewDate, allData]);
 
   const groupedComparisonData = useMemo(() => {
-    if (comparisonData.length === 0) return {};
     return comparisonData.reduce((acc, row) => {
       const groupName = row['NHÓM CHỈ TIÊU'];
-      if (!acc[groupName]) { acc[groupName] = []; }
+      if (!acc[groupName]) acc[groupName] = [];
       acc[groupName].push(row);
       return acc;
     }, {});
   }, [comparisonData]);
+
+  const crossUnitComparison = useMemo(() => {
+    if (comparisonUnits.length < 2 || !selectedNewDate || !allData[selectedNewDate]) {
+        return { headers: [], data: {} };
+    }
+    const dataForDate = allData[selectedNewDate];
+    const headers = Object.keys(dataForDate[0] || {});
+    const unitCol = findColumnName(headers, ['don vi', 'tendonvi', 'ten']);
+    const indicatorCol = findColumnName(headers, ['chi so', 'description']);
+    const scoreCol = findColumnName(headers, ['diem danh gia', 'score']);
+    const groupCol = findColumnName(headers, ['nhom chi tieu']);
+    if (!unitCol || !indicatorCol || !scoreCol) return { headers: [], data: {} };
+
+    const dataByIndicator = {};
+    dataForDate.forEach(row => {
+        if (comparisonUnits.includes(row[unitCol])) {
+            const indicator = row[indicatorCol];
+            if (!indicator) return;
+            if (!dataByIndicator[indicator]) dataByIndicator[indicator] = {};
+            dataByIndicator[indicator][row[unitCol]] = {
+                score: parseFloat(String(row[scoreCol] || '0').replace(',', '.')) || 0,
+                group: row[groupCol] || 'Chưa phân loại'
+            };
+        }
+    });
+
+    const tableData = Object.keys(dataByIndicator).map(indicator => {
+        const row = { 'CHỈ SỐ': indicator };
+        let groupName = 'Chưa phân loại';
+        comparisonUnits.forEach(unit => {
+            const unitData = dataByIndicator[indicator]?.[unit];
+            row[unit] = unitData?.score;
+            if (unitData?.group) groupName = unitData.group;
+        });
+        row['NHÓM CHỈ TIÊU'] = groupName;
+        return row;
+    });
+
+    const groupedData = tableData.reduce((acc, row) => {
+      const group = row['NHÓM CHỈ TIÊU'];
+      if (!acc[group]) acc[group] = [];
+      acc[group].push(row);
+      return acc;
+    }, {});
+
+    return {
+        headers: ['CHỈ SỐ', ...comparisonUnits],
+        data: groupedData
+    };
+  }, [comparisonUnits, selectedNewDate, allData]);
+
+
+  // --- EVENT HANDLERS ---
+  const handleComparisonUnitChange = (e) => {
+    const { value, checked } = e.target;
+    setComparisonUnits(prev =>
+      checked ? [...prev, value] : prev.filter(unit => unit !== value)
+    );
+  };
+  
+  const handleViewFullScreenComparison = () => {
+    const { headers, data } = crossUnitComparison;
+    if (headers.length <= 1) return;
+
+    const currentStyles = Array.from(document.styleSheets)
+      .map(sheet => {
+        try {
+          return Array.from(sheet.cssRules)
+            .map(rule => rule.cssText)
+            .join('');
+        } catch (e) {
+          return '';
+        }
+      })
+      .join('\n');
+    
+    const tableHeader = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>`;
+    const tableBody = `<tbody>${Object.entries(data).map(([groupName, rows]) => 
+        `<tr class="group-header-row"><td colspan="${headers.length}">${groupName}</td></tr>` +
+        rows.map(row => `<tr>${headers.map(header => `
+            <td>${header === 'CHỈ SỐ' ? row[header] : (typeof row[header] === 'number' ? row[header].toFixed(2) : '–')}</td>
+        `).join('')}</tr>`).join('')
+    ).join('')}</tbody>`;
+
+    const newWindow = window.open('', '_blank');
+    newWindow.document.write(`
+      <html>
+        <head>
+          <title>Bảng so sánh chi tiết - ${selectedNewDate}</title>
+          <style>
+            body { font-family: 'Segoe UI', sans-serif; padding: 2rem; background-color: #f0f2f5; }
+            h1 { color: #0056b3; }
+            ${currentStyles} 
+            td:first-child { position: static; }
+            .table-container { box-shadow: none; }
+          </style>
+        </head>
+        <body>
+          <h1>Bảng so sánh điểm giữa các đơn vị</h1>
+          <p>Dữ liệu tại ngày: <strong>${selectedNewDate}</strong></p>
+          <div class="card table-container">
+            <table>${tableHeader}${tableBody}</table>
+          </div>
+        </body>
+      </html>
+    `);
+    newWindow.document.close();
+  };
 
   const renderChange = (change) => {
     if (isNaN(change)) return <span>N/A</span>;
@@ -196,38 +273,61 @@ function App() {
     );
   };
   
+  // --- RENDER LOGIC ---
   if (loading) return <div className="container"><p className="status-message">{status}</p></div>;
   if (error) return <div className="container"><p className="status-message error">{error}</p></div>;
 
   return (
     <div className="container">
-      <header className="app-header"><h1>📊 Bảng điều khiển So sánh & Theo dõi Dữ liệu</h1></header>
+      {showAddDataForm && <AddDataForm onClose={() => setShowAddDataForm(false)} />}
+      
+      <header className="app-header">
+        <h1>📊 Bảng điều khiển So sánh & Theo dõi Dữ liệu</h1>
+        <button className="header-action-button" onClick={() => setShowAddDataForm(true)}>
+          <span className="icon-plus"></span>
+          Thêm dữ liệu mới
+        </button>
+      </header>
+      
       <div className="card controls-grid">
         <div className="control-group">
           <label htmlFor="unit-select">1. Chọn Đơn vị</label>
-          <select id="unit-select" value={selectedUnit} onChange={(e) => setSelectedUnit(e.target.value)}>
-            <option value="">-- Vui lòng chọn --</option>
-            {units.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-          </select>
+          
+          {/* --- THAY THẾ DROPDOWN CŨ BẰNG REACT-SELECT --- */}
+          <Select
+            id="unit-select"
+            options={unitOptions}
+            value={selectedUnit}
+            onChange={setSelectedUnit}
+            placeholder="-- Vui lòng chọn hoặc nhập để tìm kiếm --"
+            isSearchable
+            noOptionsMessage={() => "Không tìm thấy đơn vị"}
+            styles={customSelectStyles}
+          />
+
         </div>
         <div className="control-group">
           <label htmlFor="old-date-select">2. So sánh với Ngày (Cũ hơn)</label>
-          <select id="old-date-select" value={selectedOldDate} onChange={(e) => setSelectedOldDate(e.target.value)}>
+          <select id="old-date-select" value={selectedOldDate} onChange={(e) => setSelectedOldDate(e.target.value)} disabled={!selectedUnit}>
             {sheetsConfig.map(sheet => <option key={`${sheet.gid}-old`} value={sheet.name}>{sheet.name}</option>)}
           </select>
         </div>
         <div className="control-group">
           <label htmlFor="new-date-select">3. Chọn Ngày (Mới hơn)</label>
-          <select id="new-date-select" value={selectedNewDate} onChange={(e) => setSelectedNewDate(e.target.value)}>
+          <select id="new-date-select" value={selectedNewDate} onChange={(e) => setSelectedNewDate(e.target.value)} disabled={!selectedUnit}>
             {sheetsConfig.map(sheet => <option key={`${sheet.gid}-new`} value={sheet.name}>{sheet.name}</option>)}
           </select>
         </div>
       </div>
+      
       {selectedUnit ? (
         <>
-          <div className="card chart-container"><h3>Biểu đồ thay đổi điểm</h3><ComparisonChart data={comparisonData} /></div>
+          <div className="card chart-container">
+              <ComparisonChart data={comparisonData} unitName={selectedUnit.label} />
+          </div>
+
           <div className="card table-container">
-            <h3>Bảng so sánh chi tiết: <strong>{selectedUnit}</strong></h3>
+            <h3>Bảng so sánh chi tiết: <strong>{selectedUnit.label}</strong></h3>
             <p>So sánh giữa ngày <strong>{selectedNewDate}</strong> và ngày <strong>{selectedOldDate}</strong></p>
             <table>
               <thead>
@@ -244,36 +344,69 @@ function App() {
                   <React.Fragment key={groupName}>
                     <tr className="group-header-row"><td colSpan="7">{groupName}</td></tr>
                     {rows.map((row, index) => {
-                       // CẬP NHẬT: Lấy điểm tối đa dựa trên tên chỉ số đã chuẩn hóa
-                       const normalizedIndicator = normalizeString(row['CHỈ SỐ']);
-                       const maxScore = MAX_SCORES[normalizedIndicator];
-                       return(
-                        <tr key={index}>
-                          <td><div className="indicator-name">{row['CHỈ SỐ']}</div></td>
-                          <td>{row.tyLeOld.toFixed(2)}</td><td>{row.tyLeNew.toFixed(2)}</td>
-                          <td>{renderChange(row.thayDoiTyLe)}</td>
-                          
-                          {/* CẬP NHẬT: Hiển thị điểm tối đa nếu có */}
-                          <td>
-                            {row.diemOld.toFixed(2)}
-                            {maxScore && <span className="max-score"> / {maxScore}</span>}
-                          </td>
-                          <td>
-                            {row.diemNew.toFixed(2)}
-                            {maxScore && <span className="max-score"> / {maxScore}</span>}
-                          </td>
-                          
-                          <td>{renderChange(row.thayDoiDiem)}</td>
-                        </tr>
-                       )
+                        const normalizedIndicator = normalizeString(row['CHỈ SỐ']);
+                        const maxScore = MAX_SCORES[normalizedIndicator];
+                        return(
+                          <tr key={index}>
+                            <td><div className="indicator-name">{row['CHỈ SỐ']}</div></td>
+                            <td>{row.tyLeOld.toFixed(2)}</td><td>{row.tyLeNew.toFixed(2)}</td>
+                            <td>{renderChange(row.thayDoiTyLe)}</td>
+                            <td>
+                              {row.diemOld.toFixed(2)}
+                              {maxScore && <span className="max-score"> / {maxScore}</span>}
+                            </td>
+                            <td>
+                              {row.diemNew.toFixed(2)}
+                              {maxScore && <span className="max-score"> / {maxScore}</span>}
+                            </td>
+                            <td>{renderChange(row.thayDoiDiem)}</td>
+                          </tr>
+                        )
                     })}
                   </React.Fragment>
                 ))}
               </tbody>
             </table>
           </div>
+
+          <div className="card">
+                <button className="accordion-button" onClick={() => setShowCrossUnitComparer(!showCrossUnitComparer)}>
+                  <span className="accordion-icon">{showCrossUnitComparer ? '➖' : '➕'}</span>
+                  So sánh với các đơn vị khác
+                </button>
+                {showCrossUnitComparer && (
+                  <div className="accordion-content">
+                      <p>Chọn hai hoặc nhiều đơn vị để so sánh điểm tại ngày <strong>{selectedNewDate}</strong>.</p>
+                      <div className="checkbox-container">
+                          {units.map(unit => (
+                          <div key={unit} className="checkbox-item">
+                              <input
+                              type="checkbox"
+                              id={`compare-${unit}`}
+                              value={unit}
+                              checked={comparisonUnits.includes(unit)}
+                              onChange={handleComparisonUnitChange}
+                              />
+                              <label htmlFor={`compare-${unit}`}>{unit}</label>
+                          </div>
+                          ))}
+                      </div>
+
+                      {comparisonUnits.length >= 2 && (
+                        <>
+                            <CrossUnitComparisonChart comparisonData={crossUnitComparison} />
+                            <CrossUnitComparisonTable 
+                                comparisonData={crossUnitComparison} 
+                                selectedDate={selectedNewDate}
+                                onViewFullScreen={handleViewFullScreenComparison}
+                            />
+                        </>
+                      )}
+                  </div>
+                )}
+          </div>
         </>
-      ) : <p className="status-message">Vui lòng chọn một đơn vị và hai ngày để bắt đầu so sánh.</p>}
+      ) : <p className="status-message">Vui lòng chọn một đơn vị để xem dữ liệu.</p>}
     </div>
   );
 }
