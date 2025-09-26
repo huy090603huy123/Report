@@ -307,13 +307,13 @@ function App() {
 
         </div>
         <div className="control-group">
-          <label htmlFor="old-date-select">2. So sánh với Ngày (Cũ hơn)</label>
+          <label htmlFor="old-date-select">2. So sánh ngày</label>
           <select id="old-date-select" value={selectedOldDate} onChange={(e) => setSelectedOldDate(e.target.value)} disabled={!selectedUnit}>
             {sheetsConfig.map(sheet => <option key={`${sheet.gid}-old`} value={sheet.name}>{sheet.name}</option>)}
           </select>
         </div>
         <div className="control-group">
-          <label htmlFor="new-date-select">3. Chọn Ngày (Mới hơn)</label>
+          <label htmlFor="new-date-select">3. Với ngày</label>
           <select id="new-date-select" value={selectedNewDate} onChange={(e) => setSelectedNewDate(e.target.value)} disabled={!selectedUnit}>
             {sheetsConfig.map(sheet => <option key={`${sheet.gid}-new`} value={sheet.name}>{sheet.name}</option>)}
           </select>
