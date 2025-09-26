@@ -1,0 +1,21 @@
+.app-footer {
+    text-align: center;
+    padding: 2rem 1rem;
+    margin-top: 2.5rem;
+    border-top: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+    color: #6c757d; /* Màu xám mờ */
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.app-footer p {
+    margin: 0.5rem auto;
+    max-width: 800px; /* Giới hạn chiều rộng để dễ đọc */
+}
+
+.app-footer .footer-warning {
+    color: #dc3545; /* Màu đỏ cảnh báo */
+    font-size: 1rem;
+}
+
