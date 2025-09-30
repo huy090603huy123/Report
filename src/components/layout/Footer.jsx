@@ -8,12 +8,12 @@ const Footer = () => {
                 <strong>Lưu ý quan trọng:</strong>
             </p>
             <p>
-                Website này hiện đang lấy dữ liệu trực tiếp từ một file Google Sheets.
+                Website này hiện đang lấy dữ liệu người dùng nhập vào.
                 Nhà phát triển không đảm bảo 100% thông tin hiển thị trên đây là chính xác tuyệt đối.
-                Vì vậy, người dùng cần kiểm tra và đối chiếu kỹ lưỡng trước khi sử dụng.
+                Vì vậy, thông tin trên trang này chỉ mang tính tham khảo.
             </p>
             <p>
-                Do sử dụng nền tảng miễn phí, trang web có thể không ổn định hoặc ngừng hoạt động bất cứ lúc nào.
+                Phiên bản đang trong giai đoạn thí điểm..
             </p>
         </footer>
     );
