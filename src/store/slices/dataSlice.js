@@ -2,7 +2,28 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { fetchSheetsConfig, fetchSheetData } from '../../services/sheetService';
 import { findColumnName } from '../../utils';
 
-// THUNK 1: Chỉ tải cấu hình và dữ liệu sheet mới nhất để lấy danh sách đơn vị
+/**
+ * Chuyển đổi chuỗi ngày có định dạng "DD/MM/YYYY" sang đối tượng Date.
+ * @param {string} dateStr - Chuỗi ngày cần chuyển đổi.
+ * @returns {Date|null}
+ */
+const parseDateString = (dateStr) => {
+  if (typeof dateStr !== 'string' || !dateStr.includes('/')) return null;
+
+  const parts = dateStr.split('/');
+  if (parts.length !== 3) return null;
+
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10); // Tháng trong JS là 0-indexed
+  const year = parseInt(parts[2], 10);
+
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+
+  return new Date(year, month - 1, day);
+};
+
+
+// THUNK 1: Tải cấu hình và dữ liệu sheet mới nhất
 export const fetchConfigAndUnits = createAsyncThunk(
   'data/fetchConfigAndUnits',
   async (_, { rejectWithValue }) => {
@@ -12,10 +33,19 @@ export const fetchConfigAndUnits = createAsyncThunk(
         return { sheetsConfig: [], allData: {}, units: [] };
       }
 
-      // Chỉ tải dữ liệu của sheet đầu tiên (mới nhất)
+      // Sắp xếp danh sách các sheet theo ngày tháng giảm dần (mới nhất lên đầu)
+      config.sort((a, b) => {
+        const dateA = parseDateString(a.name);
+        const dateB = parseDateString(b.name);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      // Tải dữ liệu của sheet đầu tiên (mới nhất)
       const latestSheet = config[0];
       const { data: latestData } = await fetchSheetData(latestSheet);
-
       const dataBySheet = { [latestSheet.name]: latestData };
 
       let units = [];
@@ -37,7 +67,7 @@ export const fetchConfigAndUnits = createAsyncThunk(
   }
 );
 
-// THUNK 2: Tải dữ liệu cho một sheet cụ thể theo yêu cầu
+// THUNK 2: Tải dữ liệu cho một sheet cụ thể
 export const fetchSheet = createAsyncThunk(
   'data/fetchSheet',
   async (sheet, { rejectWithValue }) => {
@@ -49,7 +79,6 @@ export const fetchSheet = createAsyncThunk(
     }
   }
 );
-
 
 const initialState = {
   sheetsConfig: [],
@@ -65,7 +94,6 @@ const dataSlice = createSlice({
   initialState,
   reducers: {},
   extraReducers: (builder) => {
-    // Reducers cho fetchConfigAndUnits
     builder
       .addCase(fetchConfigAndUnits.pending, (state) => {
         state.loading = true;
@@ -85,10 +113,8 @@ const dataSlice = createSlice({
         state.error = action.payload;
       });
 
-    // Reducers cho fetchSheet
     builder
       .addCase(fetchSheet.fulfilled, (state, action) => {
-        // Thêm dữ liệu của sheet vừa tải vào state
         state.allData[action.payload.name] = action.payload.data;
       });
   },
