@@ -1,15 +1,32 @@
+// src/components/dashboard/MultiUnitComparer.jsx
+
 import React, { useState, useMemo } from 'react';
 import { useSelector } from 'react-redux';
+import Select from 'react-select';
 import { findColumnName } from '../../utils';
-import { HIDDEN_INDICATORS } from '../../constants'; // <-- BƯỚC 1: IMPORT
+import { HIDDEN_INDICATORS } from '../../constants';
 import CrossUnitComparisonChart from '../CrossUnitComparisonChart';
 import CrossUnitComparisonTable from '../CrossUnitComparisonTable';
+
+const customSelectStyles = {
+  control: (provided) => ({
+    ...provided,
+    borderColor: '#ccc',
+    boxShadow: 'none',
+    '&:hover': { borderColor: '#007bff' },
+  }),
+  menu: (provided) => ({
+    ...provided,
+    zIndex: 5
+  })
+};
 
 const MultiUnitComparer = ({ selectedDate }) => {
   const { allData, units } = useSelector((state) => state.data);
 
   const [showComparer, setShowComparer] = useState(false);
   const [comparisonUnits, setComparisonUnits] = useState([]);
+  const [selectedIndicators, setSelectedIndicators] = useState([]);
 
   const handleUnitChange = (e) => {
     const { value, checked } = e.target;
@@ -18,9 +35,14 @@ const MultiUnitComparer = ({ selectedDate }) => {
     );
   };
 
+  // --- HÀM MỚI ĐỂ BỎ CHỌN TẤT CẢ ĐƠN VỊ ---
+  const handleClearAllUnits = () => {
+    setComparisonUnits([]);
+  };
+
   const crossUnitComparisonData = useMemo(() => {
     if (comparisonUnits.length < 2 || !selectedDate || !allData[selectedDate]) {
-      return { headers: [], data: {} };
+      return { headers: [], data: {}, allIndicators: [] };
     }
     
     const dataForDate = allData[selectedDate];
@@ -29,7 +51,7 @@ const MultiUnitComparer = ({ selectedDate }) => {
     const indicatorCol = findColumnName(headers, ['chi so', 'description']);
     const scoreCol = findColumnName(headers, ['diem danh gia', 'score']);
     const groupCol = findColumnName(headers, ['nhom chi tieu']);
-    if (!unitCol || !indicatorCol || !scoreCol) return { headers: [], data: {} };
+    if (!unitCol || !indicatorCol || !scoreCol) return { headers: [], data: {}, allIndicators: [] };
 
     const dataByIndicator = {};
     dataForDate.forEach(row => {
@@ -56,7 +78,6 @@ const MultiUnitComparer = ({ selectedDate }) => {
           row['NHÓM CHỈ TIÊU'] = groupName;
           return row;
       })
-      // <-- BƯỚC 2: THÊM BỘ LỌC TẠI ĐÂY
       .filter(row => !HIDDEN_INDICATORS.includes(row['CHỈ SỐ']));
 
     const groupedData = tableData.reduce((acc, row) => {
@@ -65,14 +86,20 @@ const MultiUnitComparer = ({ selectedDate }) => {
       acc[group].push(row);
       return acc;
     }, {});
+    
+    const allIndicators = (groupedData['Tổng hợp'] || []).map(item => item['CHỈ SỐ']);
 
     return {
         headers: ['CHỈ SỐ', ...comparisonUnits],
-        data: groupedData
+        data: groupedData,
+        allIndicators 
     };
   }, [comparisonUnits, selectedDate, allData]);
+  
+  const indicatorOptions = useMemo(() => 
+    crossUnitComparisonData.allIndicators?.map(name => ({ value: name, label: name })) || [], 
+  [crossUnitComparisonData.allIndicators]);
 
-  // ... (phần còn lại của file giữ nguyên)
   const handleViewFullScreen = () => {
     const { headers, data } = crossUnitComparisonData;
     if (headers.length <= 1) return;
@@ -84,6 +111,7 @@ const MultiUnitComparer = ({ selectedDate }) => {
     newWindow.document.close();
   };
 
+
   return (
     <div className="card">
       <button className="accordion-button" onClick={() => setShowComparer(!showComparer)}>
@@ -92,7 +120,17 @@ const MultiUnitComparer = ({ selectedDate }) => {
       </button>
       {showComparer && (
         <div className="accordion-content">
-          <p>Chọn hai hoặc nhiều đơn vị để so sánh điểm tại ngày <strong>{selectedDate}</strong>.</p>
+          {/* --- BỌC PHẦN MÔ TẢ VÀ NÚT BẤM VÀO 1 DIV --- */}
+          <div className="unit-selection-header">
+            <p>Chọn hai hoặc nhiều đơn vị để so sánh điểm tại ngày <strong>{selectedDate}</strong>.</p>
+            {/* --- THÊM NÚT BỎ CHỌN, CHỈ HIỂN THỊ KHI CÓ LỰA CHỌN --- */}
+            {comparisonUnits.length > 0 && (
+              <button onClick={handleClearAllUnits} className="clear-selection-button">
+                Bỏ chọn tất cả
+              </button>
+            )}
+          </div>
+
           <div className="checkbox-container">
             {units.map((unit) => (
               <div key={unit} className="checkbox-item">
@@ -110,7 +148,25 @@ const MultiUnitComparer = ({ selectedDate }) => {
 
           {comparisonUnits.length >= 2 && (
             <>
-              <CrossUnitComparisonChart comparisonData={crossUnitComparisonData} />
+              <div style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                  Lọc chỉ số trên biểu đồ
+                </label>
+                <Select
+                  isMulti
+                  options={indicatorOptions}
+                  value={selectedIndicators}
+                  onChange={setSelectedIndicators}
+                  placeholder="-- Chọn chỉ số để hiển thị (mặc định là tất cả) --"
+                  noOptionsMessage={() => "Không có chỉ số nào"}
+                  styles={customSelectStyles}
+                />
+              </div>
+
+              <CrossUnitComparisonChart 
+                comparisonData={crossUnitComparisonData} 
+                selectedIndicators={selectedIndicators.map(opt => opt.value)}
+              />
               <CrossUnitComparisonTable
                 comparisonData={crossUnitComparisonData}
                 selectedDate={selectedDate}

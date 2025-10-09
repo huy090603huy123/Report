@@ -1,5 +1,5 @@
 import { SPREADSHEET_ID, CONFIG_SHEET_GID } from '../constants';
-
+import { validateSheetData } from '../utils'; 
 // Hàm nội bộ để xử lý chuỗi JSON từ Google Sheets
 const parseGoogleSheetResponse = (text, sheetIdentifier) => {
     const rawJson = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/);
@@ -36,6 +36,7 @@ export const fetchSheetData = async (sheet) => {
     }
     const text = await response.text();
     const { rows } = parseGoogleSheetResponse(text, sheet.name);
+    validateSheetData(rows, sheet.name);
     return { name: sheet.name, data: rows };
 };
 
