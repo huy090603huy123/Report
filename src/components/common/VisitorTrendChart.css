@@ -1,0 +1,56 @@
+/* src/components/common/VisitorTrendChart.css */
+.visitor-trend-chart {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #dee2e6;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.chart-header h4 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.time-range-buttons button {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  padding: 0.5rem 1rem;
+  margin-left: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.time-range-buttons button:hover {
+  background-color: #e9ecef;
+}
+
+.time-range-buttons button.active {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.chart-container {
+  height: 350px;
+  position: relative;
+}
+
+.chart-loading, .chart-error {
+    text-align: center;
+    padding: 3rem;
+    color: #6c757d;
+}
+.chart-error {
+    color: #dc3545;
+}

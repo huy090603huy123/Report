@@ -3,19 +3,21 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 
 // Import actions
-import { fetchConfigAndUnits  } from './store/slices/dataSlice'; 
-
-
-import SkeletonLoader from './components/common/SkeletonLoader';
-import ErrorMessage from './components/common/ErrorMessage';
-
+import { fetchConfigAndUnits } from './store/slices/dataSlice';
 
 // Import Components
+import SkeletonLoader from './components/common/SkeletonLoader';
+import ErrorMessage from './components/common/ErrorMessage';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
+import Navbar from './components/layout/Navbar'; // <-- Code mới
 import Controls from './components/controls/Controls';
-import Dashboard from './components/dashboard/Dashboard'; // <-- Import component mới
+import Dashboard from './components/dashboard/Dashboard';
 import AddDataForm from './components/AddDataForm';
+
+// Import Pages
+import StatisticsPage from './pages/StatisticsPage'; // <-- Code mới
+import AboutPage from './pages/AboutPage'; // <-- Code mới
 
 // Đăng ký các thành phần cần thiết cho Chart.js
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -23,6 +25,9 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 function App() {
   const dispatch = useDispatch();
   const { sheetsConfig, units, loading, error } = useSelector((state) => state.data);
+
+  // --- Code mới: State để quản lý trang hiện tại ---
+  const [currentPage, setCurrentPage] = useState('dashboard'); // 'dashboard', 'statistics', 'about'
 
   useEffect(() => {
     dispatch(fetchConfigAndUnits());
@@ -44,7 +49,41 @@ function App() {
 
   const unitOptions = useMemo(() => units.map(unit => ({ value: unit, label: unit })), [units]);
 
-    if (loading) {
+  // --- Code mới: Hàm để render nội dung chính dựa trên state 'currentPage' ---
+  const renderContent = () => {
+    switch (currentPage) {
+      case 'statistics':
+        return <StatisticsPage />;
+      case 'about':
+        return <AboutPage />;
+      case 'dashboard':
+      default:
+        return (
+          <>
+            <Controls
+                sheetsConfig={sheetsConfig}
+                unitOptions={unitOptions}
+                selectedUnit={selectedUnit}
+                onUnitChange={setSelectedUnit}
+                oldDate={selectedOldDate}
+                onOldDateChange={(e) => setSelectedOldDate(e.target.value)}
+                newDate={selectedNewDate}
+                onNewDateChange={(e) => setSelectedNewDate(e.target.value)}
+            />
+            
+            {selectedUnit ? (
+              <Dashboard 
+                selectedUnit={selectedUnit}
+                oldDate={selectedOldDate}
+                newDate={selectedNewDate}
+              />
+            ) : <p className="status-message">Vui lòng chọn một đơn vị để xem dữ liệu.</p>}
+          </>
+        );
+    }
+  };
+
+  if (loading) {
     return (
       <div className="container">
         <SkeletonLoader />
@@ -56,6 +95,8 @@ function App() {
     return (
       <div className="container">
         <Header onAddDataClick={() => setShowAddDataForm(true)} />
+        {/* Thêm Navbar cả khi có lỗi */}
+        <Navbar currentPage={currentPage} setCurrentPage={setCurrentPage} />
         <ErrorMessage error={error} />
         <Footer />
       </div>
@@ -69,24 +110,9 @@ function App() {
       <Header onAddDataClick={() => setShowAddDataForm(true)} />
       
       <main>
-        <Controls
-            sheetsConfig={sheetsConfig}
-            unitOptions={unitOptions}
-            selectedUnit={selectedUnit}
-            onUnitChange={setSelectedUnit}
-            oldDate={selectedOldDate}
-            onOldDateChange={(e) => setSelectedOldDate(e.target.value)}
-            newDate={selectedNewDate}
-            onNewDateChange={(e) => setSelectedNewDate(e.target.value)}
-        />
-        
-        {selectedUnit ? (
-          <Dashboard 
-            selectedUnit={selectedUnit}
-            oldDate={selectedOldDate}
-            newDate={selectedNewDate}
-          />
-        ) : <p className="status-message">Vui lòng chọn một đơn vị để xem dữ liệu.</p>}
+        {/* --- Code mới: Thêm Navbar và gọi hàm renderContent --- */}
+        <Navbar currentPage={currentPage} setCurrentPage={setCurrentPage} />
+        {renderContent()}
       </main>
 
       <Footer />
