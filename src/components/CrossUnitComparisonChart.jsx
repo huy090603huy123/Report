@@ -1,16 +1,9 @@
-// src/components/CrossUnitComparisonChart.jsx
-
 import React from 'react';
 import { Bar } from 'react-chartjs-2';
-// --- Bỏ import LineElement và PointElement không cần thiết ---
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 
-// Đăng ký lại các thành phần cần thiết cho biểu đồ cột
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
-
-// Hàm tạo màu (giữ nguyên)
+// Hàm tạo màu ngẫu nhiên nhưng dễ nhìn cho các cột
 const generatePastelColor = (index) => {
-    const hue = (index * 137.508) % 360;
+    const hue = (index * 137.508) % 360; // Dùng golden angle để màu sắc khác biệt
     return `hsla(${hue}, 70%, 75%, 0.8)`;
 };
 
@@ -19,28 +12,23 @@ const generatePastelBorderColor = (index) => {
     return `hsla(${hue}, 70%, 60%, 1)`;
 };
 
-const CrossUnitComparisonChart = ({ comparisonData, selectedIndicators }) => {
+const CrossUnitComparisonChart = ({ comparisonData }) => {
+    // Điều kiện hiển thị: có dữ liệu, có hơn 2 đơn vị, VÀ có nhóm 'Tổng hợp' trong dữ liệu
     if (!comparisonData || comparisonData.headers.length <= 2 || !comparisonData.data['Tổng hợp']) {
         return null;
     }
 
-    let generalDataRows = comparisonData.data['Tổng hợp'];
+    // CHỈ LẤY DỮ LIỆU TỪ NHÓM "TỔNG HỢP"
+    const generalDataRows = comparisonData.data['Tổng hợp'];
 
-    // Lọc dữ liệu dựa trên các chỉ số được chọn (giữ nguyên)
-    if (selectedIndicators && selectedIndicators.length > 0) {
-        generalDataRows = generalDataRows.filter(row => selectedIndicators.includes(row['CHỈ SỐ']));
-    }
-
+    // Lấy danh sách các đơn vị từ header (bỏ cột 'CHỈ SỐ')
     const unitNames = comparisonData.headers.filter(h => h !== 'CHỈ SỐ' && h !== 'NHÓM CHỈ TIÊU');
-
-    // --- BỎ PHẦN TÍNH TOÁN ĐIỂM TRUNG BÌNH ---
 
     const chartData = {
         labels: generalDataRows.map(row => row['CHỈ SỐ']),
-        // --- BỎ DATASET CỦA ĐƯỜNG TRUNG BÌNH RA KHỎI MẢNG ---
         datasets: unitNames.map((unit, index) => ({
             label: unit,
-            data: generalDataRows.map(row => row[unit] || 0),
+            data: generalDataRows.map(row => row[unit] || 0), // Lấy dữ liệu điểm của đơn vị
             backgroundColor: generatePastelColor(index),
             borderColor: generatePastelBorderColor(index),
             borderWidth: 1,
@@ -56,6 +44,7 @@ const CrossUnitComparisonChart = ({ comparisonData, selectedIndicators }) => {
             },
             title: {
                 display: true,
+                // Cập nhật lại tiêu đề biểu đồ
                 text: 'Biểu đồ so sánh điểm TỔNG HỢP giữa các đơn vị',
                 font: { size: 16 }
             },
@@ -85,13 +74,9 @@ const CrossUnitComparisonChart = ({ comparisonData, selectedIndicators }) => {
 
     return (
         <div className="card chart-container" style={{ marginBottom: '1.5rem', minHeight: '500px' }}>
-             {generalDataRows.length > 0 ? (
-                <div style={{ position: 'relative', height: '100%', minHeight: '500px' }}>
-                    <Bar options={options} data={chartData} />
-                </div>
-            ) : (
-                <p style={{textAlign: 'center', paddingTop: '50px'}}>Vui lòng chọn ít nhất một chỉ số để hiển thị biểu đồ.</p>
-            )}
+            <div style={{ position: 'relative', height: '100%', minHeight: '500px' }}>
+                <Bar options={options} data={chartData} />
+            </div>
         </div>
     );
 };

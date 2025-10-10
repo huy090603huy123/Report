@@ -1,5 +1,6 @@
 import { SPREADSHEET_ID, CONFIG_SHEET_GID } from '../constants';
 import { validateSheetData } from '../utils'; 
+
 // Hàm nội bộ để xử lý chuỗi JSON từ Google Sheets
 const parseGoogleSheetResponse = (text, sheetIdentifier) => {
     const rawJson = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/);
@@ -13,7 +14,9 @@ const parseGoogleSheetResponse = (text, sheetIdentifier) => {
       if(row.c){
         row.c.forEach((cell, index) => { 
           if (headers[index]) {
-            rowData[headers[index]] = cell ? cell.v : null; 
+            // --- THAY ĐỔI TẠI ĐÂY ---
+            // Ưu tiên lấy giá trị đã định dạng (cell.f) cho ngày tháng, nếu không có thì mới lấy giá trị gốc (cell.v)
+            rowData[headers[index]] = cell ? (cell.f || cell.v) : null; 
           }
         });
       }

@@ -18,7 +18,6 @@ export const normalizeString = (str) => {
     if (typeof str !== 'string') return '';
     return str.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
 };
-
 // --- THÊM HÀM MỚI TẠI ĐÂY ---
 /**
  * Kiểm tra dữ liệu từ sheet để đảm bảo có đủ các cột cần thiết.

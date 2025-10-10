@@ -398,38 +398,3 @@ th .sort-icon {
   font-size: 0.8em;
   color: #888;
 }
-/* --- src/index.css --- */
-
-/* ... (giữ nguyên các style cũ của bạn) ... */
-
-/* --- THÊM STYLE CHO HEADER CỦA BỘ CHỌN ĐƠN VỊ --- */
-.unit-selection-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.unit-selection-header p {
-  margin: 0;
-  flex-grow: 1;
-}
-
-.clear-selection-button {
-  background-color: transparent;
-  color: #007bff;
-  border: 1px solid #007bff;
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.clear-selection-button:hover {
-  background-color: #007bff;
-  color: white;
-}
