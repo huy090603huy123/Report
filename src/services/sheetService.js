@@ -1,5 +1,5 @@
 import { SPREADSHEET_ID, CONFIG_SHEET_GID } from '../constants';
-import { validateSheetData } from '../utils'; 
+import { validateSheetData } from '../utils';
 
 // Hàm nội bộ để xử lý chuỗi JSON từ Google Sheets
 const parseGoogleSheetResponse = (text, sheetIdentifier) => {
@@ -8,21 +8,26 @@ const parseGoogleSheetResponse = (text, sheetIdentifier) => {
         throw new Error(`Lỗi phân tích JSON ở sheet ${sheetIdentifier}`);
     }
     const jsonData = JSON.parse(rawJson[1]);
-    const headers = jsonData.table.cols.map(col => col.label).filter(Boolean);
+
+    // Lấy tất cả các tiêu đề gốc, kể cả các tiêu đề trống
+    const originalHeaders = jsonData.table.cols.map(col => col.label);
+
     const rows = jsonData.table.rows.map(row => {
       const rowData = {};
-      if(row.c){
-        row.c.forEach((cell, index) => { 
-          if (headers[index]) {
-            // --- THAY ĐỔI TẠI ĐÂY ---
-            // Ưu tiên lấy giá trị đã định dạng (cell.f) cho ngày tháng, nếu không có thì mới lấy giá trị gốc (cell.v)
-            rowData[headers[index]] = cell ? (cell.f || cell.v) : null; 
+      if (row.c) {
+        row.c.forEach((cell, index) => {
+          const header = originalHeaders[index];
+          // Chỉ xử lý nếu cột đó có tiêu đề
+          if (header) {
+            rowData[header] = cell ? (cell.f || cell.v) : null;
           }
         });
       }
       return rowData;
     });
-    return { headers, rows };
+
+    // Trả về chỉ các hàng đã được xử lý
+    return { rows };
 };
 
 
@@ -55,13 +60,17 @@ export const fetchSheetsConfig = async () => {
     }
     const text = await response.text();
     const { rows } = parseGoogleSheetResponse(text, '_config');
-    
-    if (rows.length < 2) {
-        throw new Error("Sheet `_config` cần ít nhất 2 dòng để so sánh.");
+
+    // Lọc ra những dòng có đủ cả TEN_SHEET và GID
+    const config = rows.map(row => ({
+        name: row['TEN_SHEET'],
+        gid: row['GID'] != null ? String(row['GID']) : null
+    })).filter(row => row.name && row.gid != null);
+
+
+    if (config.length < 1) {
+        throw new Error("Sheet `_config` không chứa bất kỳ dòng cấu hình hợp lệ nào.");
     }
 
-    return rows.map(row => ({ 
-        name: row['TEN_SHEET'], 
-        gid: String(row['GID']) 
-    }));
+    return config;
 };
