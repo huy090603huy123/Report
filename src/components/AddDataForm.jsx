@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import * as XLSX from 'xlsx'; // Import thư viện xlsx
+import * as XLSX from 'xlsx';
 import './AddDataForm.css';
 
-// !!! THAY THẾ URL CỦA BẠN VÀO ĐÂY !!!
-// Dán URL bạn đã sao chép từ Google Apps Script ở Phần 2, Bước 3.
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyD4tyr7gRMeToN4JXDXvT_YDpU1ytw4ih9KmNc_6aJ2xfAoQAajhBycCoGbphZ9ciC/exec';
 
 const AddDataForm = ({ onClose }) => {
@@ -11,6 +9,16 @@ const AddDataForm = ({ onClose }) => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [message, setMessage] = useState('');
+
+    // --- BẮT ĐẦU CODE MỚI ---
+    // Hàm này giúp định dạng lại ngày để hiển thị cho người dùng
+    const formatDateForDisplay = (dateString) => {
+        if (!dateString) return '';
+        const parts = dateString.split('-'); // Tách chuỗi YYYY-MM-DD
+        if (parts.length !== 3) return '';
+        return `${parts[2]}/${parts[1]}/${parts[0]}`; // Trả về DD/MM/YYYY
+    };
+    // --- KẾT THÚC CODE MỚI ---
 
     const handleFileChange = (event) => {
         setSelectedFile(event.target.files[0]);
@@ -44,14 +52,11 @@ const AddDataForm = ({ onClose }) => {
                     return;
                 }
 
-                // --- THAY ĐỔI TẠI ĐÂY ---
-                // Chuyển đổi định dạng ngày YYYY-MM-DD thành DDMMYYYY
-                const parts = selectedDate.split('-'); // Tách chuỗi thành ['YYYY', 'MM', 'DD']
-                const formattedSheetName = `${parts[2]}${parts[1]}${parts[0]}`; // Ghép lại thành DDMMYYYY
-                // --- KẾT THÚC THAY ĐỔI ---
+                const parts = selectedDate.split('-');
+                const formattedSheetName = `${parts[2]}${parts[1]}${parts[0]}`;
 
                 const scriptPayload = {
-                    sheetName: formattedSheetName, // Sử dụng tên đã được định dạng
+                    sheetName: formattedSheetName,
                     data: jsonData
                 };
                 
@@ -100,6 +105,11 @@ const AddDataForm = ({ onClose }) => {
                     <div className="form-group">
                         <label htmlFor="sheet-date">Ngày của dữ liệu</label>
                         <input type="date" id="sheet-date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} required />
+                        {/* --- BẮT ĐẦU DÒNG MỚI ĐƯỢC THÊM VÀO --- */}
+                        <small style={{ marginTop: '5px', display: 'block', color: '#555' }}>
+                            Ngày được chọn: <strong>{formatDateForDisplay(selectedDate)}</strong> (Ngày/Tháng/Năm)
+                        </small>
+                        {/* --- KẾT THÚC DÒNG MỚI --- */}
                     </div>
                     <div className="form-group">
                         <label htmlFor="excel-file">Chọn file Excel</label>
