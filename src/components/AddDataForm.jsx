@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import './AddDataForm.css';
 
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzN5z7bJ0QVRNb6QusW890DAI8uCyVAg-867bYVXbUEUlXQq4rx61DTzfkJHKdN_aoE/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwHQXU1vvgiudV93PsLsOGa_fsFpNaC5flfA47m4tfDjGwDIJysXKSElynDle2CcD8v/exec';
 
 const AddDataForm = ({ onClose }) => {
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
