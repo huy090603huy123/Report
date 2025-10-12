@@ -1,7 +1,7 @@
 // src/components/common/VisitorCounter.jsx
 import React, { useState, useEffect, useRef } from 'react';
 
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyD4tyr7gRMeToN4JXDXvT_YDpU1ytw4ih9KmNc_6aJ2xfAoQAajhBycCoGbphZ9ciC/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzMWyW2PG_NwoC6R0jLNyrh87s6Cu4PABd9obRhgHVGzCUzKDfyBUWifKR4UFpGlC_M/exec';
 
 const VisitorCounter = () => {
     const [visitorCount, setVisitorCount] = useState('...');
