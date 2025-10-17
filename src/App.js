@@ -14,7 +14,8 @@ import Navbar from './components/layout/Navbar'; // <-- Code mới
 import Controls from './components/controls/Controls';
 import Dashboard from './components/dashboard/Dashboard';
 import AddDataForm from './components/AddDataForm';
-
+import VisitorCounter from './components/common/VisitorCounter'; // <-- Thêm vào
+import OnlineCounter from './components/common/OnlineCounter';
 // Import Pages
 import StatisticsPage from './pages/StatisticsPage'; // <-- Code mới
 import AboutPage from './pages/AboutPage'; // <-- Code mới
@@ -105,6 +106,11 @@ function App() {
 
   return (
     <div className="container">
+
+      <VisitorCounter />
+      <OnlineCounter />
+
+
       {showAddDataForm && <AddDataForm onClose={() => setShowAddDataForm(false)} />}
       
       <Header onAddDataClick={() => setShowAddDataForm(true)} />

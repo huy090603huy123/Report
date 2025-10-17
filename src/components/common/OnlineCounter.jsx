@@ -1,17 +1,21 @@
 // src/components/common/OnlineCounter.jsx
-import React, { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import { useDispatch } from 'react-redux'; // <-- Thêm vào
 import { database } from '../../firebaseConfig';
 import { ref, onValue, onDisconnect, set, serverTimestamp } from 'firebase/database';
+import { setOnlineCount } from '../../store/slices/dataSlice'; // <-- Thêm vào
 
 const OnlineCounter = () => {
-    const [onlineCount, setOnlineCount] = useState('...');
+    const dispatch = useDispatch(); // <-- Thêm vào
 
     useEffect(() => {
         const onlineUsersRef = ref(database, 'onlineUsers');
         const currentUserRef = ref(database, `onlineUsers/session-${Date.now()}`);
 
         const unsubscribe = onValue(onlineUsersRef, (snapshot) => {
-            setOnlineCount(snapshot.size);
+            // --- BẮT ĐẦU CODE MỚI ---
+            dispatch(setOnlineCount(snapshot.size));
+            // --- KẾT THÚC CODE MỚI ---
         });
 
         const presenceRef = ref(database, '.info/connected');
@@ -28,9 +32,9 @@ const OnlineCounter = () => {
             presenceUnsubscribe();
             set(currentUserRef, null); 
         };
-    }, []);
+    }, [dispatch]);
 
-    return <>{onlineCount}</>;
+    return null; // Component này chỉ chạy logic, không hiển thị gì cả
 };
 
 export default OnlineCounter;

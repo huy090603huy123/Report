@@ -1,10 +1,13 @@
 // src/pages/StatisticsPage.jsx
 import React from 'react';
-import VisitorCounter from '../components/common/VisitorCounter';
-import OnlineCounter from '../components/common/OnlineCounter';
-import './StatisticsPage.css'; // Import file CSS mới
+import { useSelector } from 'react-redux'; // <-- Thêm vào
+import './StatisticsPage.css';
 
 const StatisticsPage = () => {
+  // --- BẮT ĐẦU CODE MỚI ---
+  const { onlineCount, visitorCount } = useSelector((state) => state.data);
+  // --- KẾT THÚC CODE MỚI ---
+
   return (
     <div className="card">
       <h3 style={{ marginTop: 0, color: '#0056b3' }}>Thống kê tổng quan</h3>
@@ -14,17 +17,14 @@ const StatisticsPage = () => {
         <small><i>Lưu ý: Một số chỉ số được hiển thị dưới dạng dữ liệu mẫu để minh họa.</i></small>
       </p>
 
-      {/* Grid hiển thị các thẻ thống kê */}
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-card-header">
             <span className="stat-card-icon">👥</span>
             <span>Tổng lượt truy cập</span>
           </div>
-          <div className="stat-card-value">
-            {/* Component VisitorCounter sẽ hiển thị số liệu thật */}
-            <VisitorCounter />
-          </div>
+          {/* --- SỬA LẠI DÒNG NÀY --- */}
+          <div className="stat-card-value">{visitorCount}</div>
         </div>
 
         <div className="stat-card">
@@ -32,10 +32,8 @@ const StatisticsPage = () => {
             <span className="stat-card-icon">🟢</span>
             <span>Đang online</span>
           </div>
-          <div className="stat-card-value">
-             {/* Component OnlineCounter sẽ hiển thị số liệu thật */}
-            <OnlineCounter />
-          </div>
+          {/* --- SỬA LẠI DÒNG NÀY --- */}
+          <div className="stat-card-value">{onlineCount}</div>
         </div>
 
         <div className="stat-card">
@@ -64,13 +62,7 @@ const StatisticsPage = () => {
           <div className="stat-card-value">3m 20s</div>
            <div className="stat-card-note">(Dữ liệu mẫu)</div>
         </div>
-
-
-      
       </div>
-
-  
-
     </div>
   );
 };

@@ -1,12 +1,10 @@
+// src/store/slices/dataSlice.js
+
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { fetchSheetsConfig, fetchSheetData } from '../../services/sheetService';
 import { findColumnName } from '../../utils';
 
-/**
- * Chuyển đổi chuỗi ngày có định dạng "DD/MM/YYYY" sang đối tượng Date.
- * @param {string} dateStr - Chuỗi ngày cần chuyển đổi.
- * @returns {Date|null}
- */
+// ... (các hàm parseDateString, fetchConfigAndUnits, fetchSheet giữ nguyên)
 const parseDateString = (dateStr) => {
   if (typeof dateStr !== 'string' || !dateStr.includes('/')) return null;
 
@@ -80,6 +78,7 @@ export const fetchSheet = createAsyncThunk(
   }
 );
 
+
 const initialState = {
   sheetsConfig: [],
   allData: {},
@@ -87,12 +86,25 @@ const initialState = {
   loading: true,
   status: 'Đang khởi tạo...',
   error: null,
+  // --- BẮT ĐẦU CODE MỚI ---
+  onlineCount: 0,
+  visitorCount: '...',
+  // --- KẾT THÚC CODE MỚI ---
 };
 
 const dataSlice = createSlice({
   name: 'data',
   initialState,
-  reducers: {},
+  // --- BẮT ĐẦU CODE MỚI ---
+  reducers: {
+    setOnlineCount: (state, action) => {
+      state.onlineCount = action.payload;
+    },
+    setVisitorCount: (state, action) => {
+      state.visitorCount = action.payload;
+    },
+  },
+  // --- KẾT THÚC CODE MỚI ---
   extraReducers: (builder) => {
     builder
       .addCase(fetchConfigAndUnits.pending, (state) => {
@@ -119,5 +131,9 @@ const dataSlice = createSlice({
       });
   },
 });
+
+// --- BẮT ĐẦU CODE MỚI ---
+export const { setOnlineCount, setVisitorCount } = dataSlice.actions;
+// --- KẾT THÚC CODE MỚI ---
 
 export default dataSlice.reducer;

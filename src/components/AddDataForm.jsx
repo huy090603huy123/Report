@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import './AddDataForm.css';
 
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwHQXU1vvgiudV93PsLsOGa_fsFpNaC5flfA47m4tfDjGwDIJysXKSElynDle2CcD8v/exec';
+// Đảm bảo bạn đã cập nhật URL này bằng URL triển khai mới nhất của bạn
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwVKE2Ju4MXk26H9sUyYawyAagWK45ZJ8syKayHYXnQnImr062th0Jngg4A-y5U5Bhn/exec';
 
 const AddDataForm = ({ onClose }) => {
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -10,22 +11,19 @@ const AddDataForm = ({ onClose }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [message, setMessage] = useState('');
 
-    // --- BẮT ĐẦU CODE MỚI ---
-    // Hàm này giúp định dạng lại ngày để hiển thị cho người dùng
     const formatDateForDisplay = (dateString) => {
         if (!dateString) return '';
-        const parts = dateString.split('-'); // Tách chuỗi YYYY-MM-DD
+        const parts = dateString.split('-');
         if (parts.length !== 3) return '';
-        return `${parts[2]}/${parts[1]}/${parts[0]}`; // Trả về DD/MM/YYYY
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
     };
-    // --- KẾT THÚC CODE MỚI ---
 
     const handleFileChange = (event) => {
         setSelectedFile(event.target.files[0]);
         setMessage('');
     };
 
-    const handleSubmit = (event) => {
+    const handleSubmit = async (event) => {
         event.preventDefault();
         if (!selectedFile) {
             setMessage('Vui lòng chọn một file Excel.');
@@ -33,7 +31,20 @@ const AddDataForm = ({ onClose }) => {
         }
 
         setIsSubmitting(true);
-        setMessage('Đang đọc và xử lý file...');
+        setMessage('Đang lấy thông tin & xử lý file...');
+
+        // Lấy địa chỉ IP của người dùng trước khi gửi
+        let userIp = 'Không xác định';
+        try {
+            const ipResponse = await fetch('https://api.ipify.org?format=json');
+            if (ipResponse.ok) {
+                const ipData = await ipResponse.json();
+                userIp = ipData.ip;
+            }
+        } catch (ipError) {
+            console.error("Không thể lấy địa chỉ IP:", ipError);
+            // Vẫn tiếp tục dù không lấy được IP
+        }
 
         const reader = new FileReader();
 
@@ -57,7 +68,8 @@ const AddDataForm = ({ onClose }) => {
 
                 const scriptPayload = {
                     sheetName: formattedSheetName,
-                    data: jsonData
+                    data: jsonData,
+                    ipAddress: userIp // Thêm IP vào dữ liệu gửi đi
                 };
                 
                 setMessage('Đang gửi dữ liệu đến Google Sheet...');
@@ -105,11 +117,9 @@ const AddDataForm = ({ onClose }) => {
                     <div className="form-group">
                         <label htmlFor="sheet-date">Ngày của dữ liệu</label>
                         <input type="date" id="sheet-date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} required />
-                        {/* --- BẮT ĐẦU DÒNG MỚI ĐƯỢC THÊM VÀO --- */}
                         <small style={{ marginTop: '5px', display: 'block', color: '#555' }}>
                             Ngày được chọn: <strong>{formatDateForDisplay(selectedDate)}</strong> (Ngày/Tháng/Năm)
                         </small>
-                        {/* --- KẾT THÚC DÒNG MỚI --- */}
                     </div>
                     <div className="form-group">
                         <label htmlFor="excel-file">Chọn file Excel</label>
