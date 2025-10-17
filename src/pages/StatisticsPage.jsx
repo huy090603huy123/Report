@@ -36,32 +36,9 @@ const StatisticsPage = () => {
           <div className="stat-card-value">{onlineCount}</div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-card-header">
-            <span className="stat-card-icon">👤</span>
-            <span>Người dùng duy nhất</span>
-          </div>
-          <div className="stat-card-value">8,320</div>
-          <div className="stat-card-note">(Dữ liệu mẫu)</div>
-        </div>
         
-        <div className="stat-card">
-          <div className="stat-card-header">
-            <span className="stat-card-icon">📱</span>
-            <span>Phiên truy cập</span>
-          </div>
-          <div className="stat-card-value">9,780</div>
-          <div className="stat-card-note">(Dữ liệu mẫu)</div>
-        </div>
 
-        <div className="stat-card">
-          <div className="stat-card-header">
-            <span className="stat-card-icon">⏱️</span>
-            <span>Thời gian / phiên</span>
-          </div>
-          <div className="stat-card-value">3m 20s</div>
-           <div className="stat-card-note">(Dữ liệu mẫu)</div>
-        </div>
+      
       </div>
     </div>
   );
